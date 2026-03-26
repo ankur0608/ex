@@ -7,7 +7,6 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Note the .js extension is usually required when using imports in Node
 import Form from './Model/Form.js';
 import User from './Model/User.js';
 
@@ -208,6 +207,43 @@ app.delete('/api/users/:id', async (req, res) => {
         res.status(200).json({ message: "User deleted successfully!" });
     } catch (error) {
         res.status(500).json({ message: 'Server error while deleting user.', error: error.message });
+    }
+});
+// 6. UPDATE USER PROFILE
+app.put('/api/users/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const updates = req.body;
+
+        // Security check: If the user is trying to update their password, 
+        // it must be re-hashed before saving.
+        if (updates.password) {
+            const saltRounds = 10;
+            updates.password = await bcrypt.hash(updates.password, saltRounds);
+        }
+
+        // findByIdAndUpdate takes (id, data, options)
+        // { new: true } returns the document AFTER the update
+        // { runValidators: true } ensures the new data follows your Schema rules
+        const updatedUser = await User.findByIdAndUpdate(id, updates, { 
+            new: true, 
+            runValidators: true 
+        }).select('-password');
+
+        if (!updatedUser) {
+            return res.status(404).json({ message: 'User not found.' });
+        }
+
+        res.status(200).json({
+            message: 'User updated successfully!',
+            user: updatedUser
+        });
+
+    } catch (error) {
+        res.status(500).json({ 
+            message: 'Server error while updating user.', 
+            error: error.message 
+        });
     }
 });
 const PORT = process.env.PORT || 5000;
